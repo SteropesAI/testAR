@@ -96,6 +96,9 @@
     <div class="controls">
         <button onclick="switchToImage('image1')" class="size-button">Image 1 (60×40cm)</button>
         <button onclick="switchToImage('image2')" class="size-button">Image 2 (120×90cm)</button>
+        <button onclick="adjustScale(0.9)" title="Réduire l'échelle">- Échelle</button>
+        <button onclick="adjustScale(1.1)" title="Augmenter l'échelle">+ Échelle</button>
+        <button onclick="resetScale()" title="Réinitialiser l'échelle">Reset</button>
         <button onclick="toggleDebug()">Diagnostiquer</button>
     </div>
 
@@ -138,6 +141,11 @@
         let isMarkerDetected = false;
         let debugMode = false;
         let currentSize = "small"; // Par défaut: small (60×40cm)
+        let currentScale = 1.0; // Échelle par défaut
+        let baseWidthSmall = 0.6;  // Largeur de base pour la petite image en mètres
+        let baseHeightSmall = 0.4; // Hauteur de base pour la petite image en mètres
+        let baseWidthLarge = 1.2;  // Largeur de base pour la grande image en mètres
+        let baseHeightLarge = 0.9; // Hauteur de base pour la grande image en mètres
         
         // Attendre que tout soit chargé
         window.addEventListener('load', function() {
@@ -176,24 +184,28 @@
                 
                 if (imageId === 'image1') {
                     // Petit tableau (60×40cm)
-                    tableau.setAttribute('width', '0.6');
-                    tableau.setAttribute('height', '0.4');
-                    cadre.setAttribute('width', '0.65');
-                    cadre.setAttribute('height', '0.45');
+                    const scaledWidth = baseWidthSmall * currentScale;
+                    const scaledHeight = baseHeightSmall * currentScale;
+                    tableau.setAttribute('width', scaledWidth);
+                    tableau.setAttribute('height', scaledHeight);
+                    cadre.setAttribute('width', scaledWidth + 0.05);
+                    cadre.setAttribute('height', scaledHeight + 0.05);
                     tableau.setAttribute('material', 'src', '#image1');
-                    sizeInfo.textContent = "Taille actuelle: 60 × 40 cm";
+                    sizeInfo.textContent = `Taille actuelle: 60 × 40 cm (échelle: ${currentScale.toFixed(1)})`;
                     currentSize = "small";
-                    updateDebugInfo("Affichage de l'image 1 (60×40cm)");
+                    updateDebugInfo(`Affichage de l'image 1 (60×40cm) à l'échelle ${currentScale.toFixed(2)}`);
                 } else if (imageId === 'image2') {
                     // Grand tableau (120×90cm)
-                    tableau.setAttribute('width', '1.2');
-                    tableau.setAttribute('height', '0.9');
-                    cadre.setAttribute('width', '1.25');
-                    cadre.setAttribute('height', '0.95');
+                    const scaledWidth = baseWidthLarge * currentScale;
+                    const scaledHeight = baseHeightLarge * currentScale;
+                    tableau.setAttribute('width', scaledWidth);
+                    tableau.setAttribute('height', scaledHeight);
+                    cadre.setAttribute('width', scaledWidth + 0.05);
+                    cadre.setAttribute('height', scaledHeight + 0.05);
                     tableau.setAttribute('material', 'src', '#image2');
-                    sizeInfo.textContent = "Taille actuelle: 120 × 90 cm";
+                    sizeInfo.textContent = `Taille actuelle: 120 × 90 cm (échelle: ${currentScale.toFixed(1)})`;
                     currentSize = "large";
-                    updateDebugInfo("Affichage de l'image 2 (120×90cm)");
+                    updateDebugInfo(`Affichage de l'image 2 (120×90cm) à l'échelle ${currentScale.toFixed(2)}`);
                 }
             } catch (e) {
                 updateDebugInfo(`Erreur: ${e.message}`);
@@ -239,6 +251,22 @@
             status += "- Appareil: " + navigator.userAgent;
             
             updateDebugInfo(status);
+        }
+        
+        function adjustScale(factor) {
+            currentScale *= factor;
+            
+            // Limiter l'échelle entre 0.5 et 2.0 pour éviter des valeurs extrêmes
+            currentScale = Math.max(0.5, Math.min(currentScale, 2.0));
+            
+            // Mettre à jour le tableau avec la nouvelle échelle
+            switchToImage(currentSize === "small" ? 'image1' : 'image2');
+        }
+        
+        function resetScale() {
+            currentScale = 1.0;
+            switchToImage(currentSize === "small" ? 'image1' : 'image2');
+            updateDebugInfo("Échelle réinitialisée à 1.0");
         }
         
         function updateDebugInfo(text) {
