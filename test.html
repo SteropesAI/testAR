@@ -2,70 +2,59 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Débogage Tableau AR Avancé</title>
+    <title>Test Réalité Augmentée</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.2.0/aframe.min.js"></script>
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
-            font-family: Arial, sans-serif; 
-            background: black;
-            color: white;
+            font-family: Arial, sans-serif;
         }
-        #debug-console {
+        #debug-info {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(0,0,0,0.7);
+            top: 10px;
+            left: 10px;
+            background: white;
             padding: 10px;
+            border: 2px solid red;
             z-index: 1000;
-            white-space: pre-wrap;
-            overflow: auto;
-            max-height: 200px;
         }
-        #controls {
+        #image-upload {
             position: fixed;
             bottom: 20px;
-            width: 100%;
-            text-align: center;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 1000;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            margin: 5px;
-            border-radius: 5px;
-        }
-        #imageInput {
-            display: none;
         }
     </style>
 </head>
 <body>
-    <div id="debug-console">Initialisation de l'application AR...</div>
+    <div id="debug-info">
+        <h3>Informations de Débogage</h3>
+        <p id="status">Initialisation...</p>
+        <p id="error-details"></p>
+    </div>
 
-    <input type="file" id="imageInput" accept="image/*">
+    <input type="file" id="image-input" accept="image/*" style="display:none;">
+    <button id="image-upload">Charger une Image</button>
 
     <a-scene 
         embedded 
-        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
         vr-mode-ui="enabled: false"
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
     >
-        <!-- Marqueur Hiro par défaut -->
-        <a-marker preset="hiro" id="ar-marker">
+        <!-- Marqueur Hiro -->
+        <a-marker preset="hiro">
             <!-- Conteneur pour l'image -->
             <a-entity id="image-container">
                 <a-plane 
                     width="1" 
                     height="1" 
+                    color="#FFFFFF"
                     position="0 0.5 0"
                     rotation="-90 0 0"
-                    color="#FFFFFF"
                 >
                 </a-plane>
             </a-entity>
@@ -75,25 +64,22 @@
         <a-entity camera></a-entity>
     </a-scene>
 
-    <div id="controls">
-        <button id="load-image-btn">Charger une Image</button>
-        <button id="check-marker-btn">Vérifier le Marqueur</button>
-    </div>
-
     <script>
-        // Fonction de débogage
-        function debugLog(message) {
-            const debugConsole = document.getElementById('debug-console');
-            debugConsole.textContent += '\n' + message;
-            console.log(message);
+        // Fonction de mise à jour du statut
+        function updateStatus(message, isError = false) {
+            const statusEl = document.getElementById('status');
+            const errorEl = document.getElementById('error-details');
             
-            // Alerte temporaire
+            statusEl.textContent = message;
+            console.log(message);
+
+            // Affichage d'un message temporaire
             const tempAlert = document.createElement('div');
             tempAlert.style.position = 'fixed';
             tempAlert.style.top = '50%';
             tempAlert.style.left = '50%';
             tempAlert.style.transform = 'translate(-50%, -50%)';
-            tempAlert.style.background = 'rgba(0,0,0,0.7)';
+            tempAlert.style.background = isError ? 'red' : 'green';
             tempAlert.style.color = 'white';
             tempAlert.style.padding = '20px';
             tempAlert.style.borderRadius = '10px';
@@ -102,56 +88,33 @@
             
             setTimeout(() => {
                 document.body.removeChild(tempAlert);
-            }, 2000);
+            }, 3000);
         }
 
-        // Initialisation
+        // Vérification du chargement
         window.addEventListener('load', () => {
-            debugLog('Application chargée');
-
             // Vérification des bibliothèques
-            if (!AFRAME) {
-                debugLog('ERREUR : AFRAME non chargé');
+            if (typeof THREE === 'undefined') {
+                updateStatus('Erreur : Three.js non chargé', true);
             }
-            if (!window.ARjs) {
-                debugLog('ERREUR : AR.js non chargé');
+            if (typeof AFRAME === 'undefined') {
+                updateStatus('Erreur : AFRAME non chargé', true);
             }
         });
 
-        // Gestion du marqueur
-        const arMarker = document.getElementById('ar-marker');
-        arMarker.addEventListener('markerFound', () => {
-            debugLog('✅ MARQUEUR DÉTECTÉ !');
-        });
-
-        arMarker.addEventListener('markerLost', () => {
-            debugLog('❌ Marqueur perdu');
-        });
-
-        // Bouton de vérification de marqueur
-        const checkMarkerBtn = document.getElementById('check-marker-btn');
-        checkMarkerBtn.addEventListener('click', () => {
-            debugLog('Vérification du marqueur en cours...');
-            // Simulation de vérification
-            setTimeout(() => {
-                debugLog('Utilisez le marqueur Hiro standard');
-            }, 1000);
-        });
-
-        // Chargement d'image
-        const loadImageBtn = document.getElementById('load-image-btn');
-        const imageInput = document.getElementById('imageInput');
+        // Gestion du bouton de chargement d'image
+        const imageUploadBtn = document.getElementById('image-upload');
+        const imageInput = document.getElementById('image-input');
         const imageContainer = document.getElementById('image-container');
 
-        loadImageBtn.addEventListener('click', () => {
-            debugLog('Sélection d\'image');
+        imageUploadBtn.addEventListener('click', () => {
             imageInput.click();
         });
 
         imageInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
-                debugLog('Image sélectionnée');
+                updateStatus('Chargement de l\'image...');
                 
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -167,17 +130,35 @@
                     imageContainer.innerHTML = '';
                     imageContainer.appendChild(imagePlane);
 
-                    debugLog('✅ Image chargée avec succès !');
+                    updateStatus('Image chargée avec succès !');
                 };
 
                 reader.readAsDataURL(file);
             }
         });
 
-        // Gestion des erreurs
+        // Événements du marqueur
+        const arMarker = document.querySelector('a-marker');
+        
+        if (arMarker) {
+            arMarker.addEventListener('markerFound', () => {
+                updateStatus('Marqueur Hiro détecté !');
+            });
+
+            arMarker.addEventListener('markerLost', () => {
+                updateStatus('Marqueur perdu');
+            });
+        } else {
+            updateStatus('Erreur : Marqueur non trouvé', true);
+        }
+
+        // Gestion des erreurs globales
         window.addEventListener('error', (event) => {
-            debugLog('ERREUR GLOBALE : ' + event.message);
+            updateStatus('Erreur globale : ' + event.message, true);
         });
     </script>
+
+    <!-- Chargement dynamique de AR.js -->
+    <script src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 </body>
 </html>
