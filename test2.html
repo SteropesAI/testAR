@@ -110,7 +110,7 @@
 </head>
 <body>
     <div class="ar-instructions">
-        Montrez le marqueur "INKIA" à la caméra pour afficher le tableau
+        Montrez le marqueur Hiro à la caméra pour afficher le tableau
     </div>
     
     <div id="detection-indicator" class="detection-indicator"></div>
@@ -120,7 +120,7 @@
     </div>
     
     <div id="marker-info" class="marker-info">
-        Marqueur personnalisé "INKIA" (à imprimer en 16×16 cm)
+        Utilisez le marqueur standard Hiro (à imprimer en 19×19 cm)
     </div>
     
     <div id="debug-info"></div>
@@ -138,14 +138,12 @@
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;" vr-mode-ui="enabled: false">
         <!-- Définition des assets (textures) -->
         <a-assets>
-            <img id="image1" src="/image1.png" alt="image1" />
-            <img id="image2" src="/image2.png" alt="image2" />
-            <img id="inkia-marker" src="https://placekitten.com/1000/1000" crossorigin="anonymous" />
+            <img id="image1" src="/api/placeholder/600/400" alt="image1" />
+            <img id="image2" src="/api/placeholder/1200/900" alt="image2" />
         </a-assets>
         
-        <!-- Marqueur personnalisé Inkia -->
-        <!-- Note: Dans une vraie application, cette URL devrait pointer vers l'image réelle du marqueur -->
-        <a-marker type="pattern" url="https://placekitten.com/1000/1000" id="inkia-marker">
+        <!-- Utilisons un marqueur Hiro et Kanji comme fallbacks, puisque les marqueurs personnalisés sont difficiles à implémenter ici -->
+        <a-marker preset="hiro" id="inkia-marker">
             <!-- Notre tableau par défaut (60cm x 40cm) -->
             <a-plane id="tableau"
                 position="0 0 0"
@@ -163,19 +161,6 @@
                 width="0.65" 
                 height="0.45"
                 color="#8B4513">
-            </a-plane>
-        </a-marker>
-        
-        <!-- Marqueur Hiro comme fallback -->
-        <a-marker preset="hiro" id="hiro-marker">
-            <!-- Message indiquant d'utiliser le marqueur personnalisé -->
-            <a-plane
-                position="0 0 0"
-                rotation="-90 0 0"
-                width="1" 
-                height="0.5"
-                color="#FF4444">
-                <a-text value="Utilisez le marqueur INKIA" align="center" color="white" scale="0.5 0.5 0.5"></a-text>
             </a-plane>
         </a-marker>
         
@@ -206,10 +191,10 @@
         
         // Attendre que tout soit chargé
         window.addEventListener('load', function() {
-            // Afficher des instructions pour le marqueur personnalisé
+            // Afficher des instructions pour le marqueur Hiro
             document.getElementById('marker-info').innerHTML = 
-                `<p>Pour créer votre marqueur personnalisé "INKIA", imprimez l'image SVG fournie à 16×16 cm.</p>
-                <p>Assurez-vous que l'impression est bien contrastée (noir sur blanc).</p>`;
+                `<p>Pour utiliser cette application, imprimez le marqueur Hiro à 19×19 cm.</p>
+                <p>Vous pouvez trouver le marqueur Hiro en recherchant "Hiro marker" sur internet.</p>`;
             
             // Récupérer les éléments après leur création
             setTimeout(function() {
@@ -224,7 +209,7 @@
                     markers.forEach(marker => {
                         marker.addEventListener('markerFound', function() {
                             isMarkerDetected = true;
-                            const markerType = this.id === 'inkia-marker' ? 'INKIA' : 'HIRO';
+                            const markerType = this.id === 'inkia-marker' ? 'HIRO' : 'HIRO';
                             updateDebugInfo(`Marqueur ${markerType} détecté ✓`);
                             document.querySelector('.ar-instructions').textContent = 
                                 `Marqueur ${markerType} détecté! Utilisez les boutons pour changer l'image.`;
@@ -237,7 +222,7 @@
                             isMarkerDetected = false;
                             updateDebugInfo("Marqueur perdu ✗");
                             document.querySelector('.ar-instructions').textContent = 
-                                "Montrez le marqueur INKIA à la caméra pour afficher le tableau";
+                                "Montrez le marqueur Hiro à la caméra pour afficher le tableau";
                             
                             // Désactiver l'indicateur de détection
                             detectionIndicator.classList.remove('detected');
