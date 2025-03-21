@@ -2,61 +2,64 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Placement de Tableau AR</title>
+    <title>Débogage Tableau AR</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
-            font-family: Arial, sans-serif;
+            font-family: Arial, sans-serif; 
         }
-        #instructions {
+        #debug-info {
             position: fixed;
             top: 10px;
             left: 10px;
-            background: rgba(255,255,255,0.8);
+            background: white;
             padding: 10px;
-            border-radius: 5px;
             z-index: 1000;
+            border: 2px solid red;
         }
         #controls {
             position: fixed;
             bottom: 20px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: center;
+            width: 100%;
+            text-align: center;
             z-index: 1000;
-        }
-        #imageInput {
-            display: none;
         }
     </style>
 </head>
 <body>
-    <div id="instructions">
-        <h3>Instructions</h3>
-        <ol>
-            <li>Imprimez le H-Tag</li>
-            <li>Collez-le sur un mur</li>
-            <li>Centrez-vous face au H-Tag</li>
-            <li>Scannez avec votre téléphone</li>
-        </ol>
+    <div id="debug-info">
+        <h3>Informations de Débogage</h3>
+        <p id="status">Chargement en cours...</p>
+        <p id="error-details"></p>
     </div>
 
-    <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
-        <!-- 
-            IMPORTANT : Ici, vous devez charger VOTRE propre fichier de marqueur AR 
-            Remplacez 'htag-marker.patt' par le chemin de votre marqueur 
-            Généré à partir du H-Tag que vous avez imprimé
-        -->
-        <a-marker type="pattern" url="htag-marker.patt">
-            <!-- Conteneur pour l'image ou le tableau -->
-            <a-entity id="tableau-container">
-                <!-- Le contenu sera ajouté dynamiquement ici -->
-            </a-entity>
+    <a-scene 
+        embedded 
+        arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
+        vr-mode-ui="enabled: false"
+    >
+        <!-- Utilisation d'un marqueur prédéfini pour les tests -->
+        <a-marker preset="hiro">
+            <!-- Cube de test par défaut -->
+            <a-box 
+                position="0 0.5 0" 
+                material="color: red; opacity: 0.7"
+                rotation="0 45 0"
+            >
+            </a-box>
+            
+            <!-- Texte de test -->
+            <a-text 
+                value="Test AR" 
+                position="0 1 0" 
+                scale="0.5 0.5 0.5" 
+                color="#000000"
+            >
+            </a-text>
         </a-marker>
 
         <!-- Caméra -->
@@ -64,49 +67,57 @@
     </a-scene>
 
     <div id="controls">
-        <input type="file" id="imageInput" accept="image/*">
-        <button id="loadImage">Charger une Image de Test</button>
+        <button id="reset-ar">Réinitialiser AR</button>
     </div>
 
     <script>
-        const loadImageBtn = document.getElementById('loadImage');
-        const imageInput = document.getElementById('imageInput');
-        const tableauContainer = document.querySelector('#tableau-container');
+        // Fonction de débogage
+        function updateDebugInfo(message) {
+            const statusEl = document.getElementById('status');
+            const errorEl = document.getElementById('error-details');
+            
+            statusEl.textContent = message;
+            
+            // Journalisation des erreurs
+            console.log(message);
+        }
 
-        loadImageBtn.addEventListener('click', () => {
-            imageInput.click();
+        // Événements de la scène AR
+        const scene = document.querySelector('a-scene');
+        
+        scene.addEventListener('loaded', () => {
+            updateDebugInfo('Scène AR chargée avec succès');
         });
 
-        imageInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
-                    // Supprimer le contenu précédent
-                    tableauContainer.innerHTML = '';
+        scene.addEventListener('arError', (event) => {
+            updateDebugInfo('Erreur AR : ' + event.detail);
+        });
 
-                    // Créer une nouvelle entité image
-                    const imageEl = document.createElement('a-image');
-                    imageEl.setAttribute('src', e.target.result);
-                    
-                    // Dimensionnement et positionnement
-                    imageEl.setAttribute('width', '1.2');
-                    imageEl.setAttribute('height', '0.8');
-                    imageEl.setAttribute('rotation', '-90 0 0');
-                    
-                    // Ajouter l'image au conteneur
-                    tableauContainer.appendChild(imageEl);
-                };
+        // Bouton de réinitialisation
+        document.getElementById('reset-ar').addEventListener('click', () => {
+            scene.enterARMode();
+            updateDebugInfo('AR réinitialisé');
+        });
 
-                reader.readAsDataURL(file);
+        // Vérification de compatibilité
+        window.addEventListener('load', () => {
+            if (!AFRAME || !window.ARjs) {
+                updateDebugInfo('Erreur : AR.js ou AFRAME non chargé');
+            }
+
+            // Vérification des permissions
+            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(response => {
+                        if (response == 'granted') {
+                            updateDebugInfo('Permissions accordées');
+                        } else {
+                            updateDebugInfo('Permissions refusées');
+                        }
+                    })
+                    .catch(console.error);
             }
         });
-
-        // Avertissement pour les navigateurs non compatibles
-        if (!AFRAME || !window.ARjs) {
-            alert('Votre navigateur ne supporte pas la réalité augmentée. Utilisez Chrome sur Android ou Safari sur iOS.');
-        }
     </script>
 </body>
 </html>
