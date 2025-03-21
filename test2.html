@@ -110,7 +110,7 @@
 </head>
 <body>
     <div class="ar-instructions">
-        Montrez le marqueur Hiro à la caméra pour afficher le tableau
+        Montrez le marqueur INKIA à la caméra pour afficher le tableau
     </div>
     
     <div id="detection-indicator" class="detection-indicator"></div>
@@ -120,7 +120,7 @@
     </div>
     
     <div id="marker-info" class="marker-info">
-        Utilisez le marqueur standard Hiro (à imprimer en 19×19 cm)
+        Marqueur personnalisé INKIA (fichier .patt)
     </div>
     
     <div id="debug-info"></div>
@@ -141,8 +141,8 @@
         renderer="antialias: true; colorManagement: true; sortObjects: true; precision: highp; logarithmicDepthBuffer: true">
         <!-- Définition des assets (textures) -->
         <a-assets>
-            <img id="image1" src="image1.png" alt="image1" />
-            <img id="image2" src="image2.png" alt="image2" />
+            <img id="image1" src="/api/placeholder/600/400" alt="image1" />
+            <img id="image2" src="/api/placeholder/1200/900" alt="image2" />
         </a-assets>
         
         <!-- Utilisons un marqueur Hiro et Kanji comme fallbacks, puisque les marqueurs personnalisés sont difficiles à implémenter ici -->
@@ -199,10 +199,10 @@
         
         // Attendre que tout soit chargé
         window.addEventListener('load', function() {
-            // Afficher des instructions pour le marqueur Hiro
+            // Afficher des instructions pour le marqueur INKIA
             document.getElementById('marker-info').innerHTML = 
-                `<p>Pour utiliser cette application, imprimez le marqueur Hiro à 19×19 cm.</p>
-                <p>Vous pouvez trouver le marqueur Hiro en recherchant "Hiro marker" sur internet.</p>`;
+                `<p>Utilisez votre marqueur personnalisé INKIA.</p>
+                <p>Placez le fichier pattern-inkia.patt dans le même répertoire que cette application.</p>`;
             
             // Récupérer les éléments après leur création
             setTimeout(function() {
@@ -217,7 +217,7 @@
                     markers.forEach(marker => {
                         marker.addEventListener('markerFound', function() {
                             isMarkerDetected = true;
-                            const markerType = this.id === 'inkia-marker' ? 'HIRO' : 'HIRO';
+                            const markerType = this.id === 'inkia-marker' ? 'INKIA' : 'HIRO';
                             updateDebugInfo(`Marqueur ${markerType} détecté ✓`);
                             document.querySelector('.ar-instructions').textContent = 
                                 `Marqueur ${markerType} détecté! Utilisez les boutons pour changer l'image.`;
@@ -230,7 +230,7 @@
                             isMarkerDetected = false;
                             updateDebugInfo("Marqueur perdu ✗");
                             document.querySelector('.ar-instructions').textContent = 
-                                "Montrez le marqueur Hiro à la caméra pour afficher le tableau";
+                                "Montrez le marqueur INKIA à la caméra pour afficher le tableau";
                             
                             // Désactiver l'indicateur de détection
                             detectionIndicator.classList.remove('detected');
