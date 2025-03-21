@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Tableau Application</title>
+    <title>AR Tableau avec Marqueur Personnalisé</title>
     <!-- Chargement des bibliothèques -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -28,6 +28,20 @@
             border-radius: 5px;
             z-index: 999;
             text-align: center;
+        }
+        .detection-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            z-index: 1000;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        .detected {
+            background-color: #4CAF50;
         }
         .controls {
             position: fixed;
@@ -80,22 +94,40 @@
             text-align: center;
             font-weight: bold;
         }
+        .marker-info {
+            position: fixed;
+            top: 100px;
+            left: 10px;
+            right: 10px;
+            background-color: rgba(50, 150, 50, 0.7);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            z-index: 997;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div class="ar-instructions">
-        Montrez le marqueur Hiro à la caméra pour afficher le tableau
+        Montrez le marqueur "INKIA" à la caméra pour afficher le tableau
     </div>
+    
+    <div id="detection-indicator" class="detection-indicator"></div>
     
     <div id="size-info" class="size-info">
         Taille actuelle: 60 × 40 cm
+    </div>
+    
+    <div id="marker-info" class="marker-info">
+        Marqueur personnalisé "INKIA" (à imprimer en 16×16 cm)
     </div>
     
     <div id="debug-info"></div>
     
     <div class="controls">
         <button onclick="switchToImage('image1')" class="size-button">Image 1 (60×40cm)</button>
-        <button onclick="switchToImage('image2')" class="size-button">Image 2 (120×90cm)</button>
+        <button onclick="switchToImage('image2')" class="size-button">Image 2 (90×60cm)</button>
         <button onclick="adjustScale(0.9)" title="Réduire l'échelle">- Échelle</button>
         <button onclick="adjustScale(1.1)" title="Augmenter l'échelle">+ Échelle</button>
         <button onclick="resetScale()" title="Réinitialiser l'échelle">Reset</button>
@@ -108,17 +140,20 @@
         <a-assets>
             <img id="image1" src="/image1.png" alt="image1" />
             <img id="image2" src="/image2.png" alt="image2" />
+            <img id="inkia-marker" src="https://placekitten.com/1000/1000" crossorigin="anonymous" />
         </a-assets>
         
-        <!-- Marqueur Hiro -->
-        <a-marker preset="hiro">
+        <!-- Marqueur personnalisé Inkia -->
+        <!-- Note: Dans une vraie application, cette URL devrait pointer vers l'image réelle du marqueur -->
+        <a-marker type="pattern" url="https://placekitten.com/1000/1000" id="inkia-marker">
             <!-- Notre tableau par défaut (60cm x 40cm) -->
             <a-plane id="tableau"
                 position="0 0 0"
                 rotation="-90 0 0"
                 width="0.6" 
                 height="0.4"
-                material="src: #image1; transparent: true; opacity: 1; shader: flat">
+                material="src: #image1; transparent: true; opacity: 1; shader: flat; npot: true; alphaTest: 0.5"
+                animation="property: position; dur: 10000; from: 0 0 0; to: 0 0.002 0; dir: alternate; loop: true; easing: easeInOutSine">
             </a-plane>
             
             <!-- Cadre du tableau (légèrement plus grand) -->
@@ -128,6 +163,19 @@
                 width="0.65" 
                 height="0.45"
                 color="#8B4513">
+            </a-plane>
+        </a-marker>
+        
+        <!-- Marqueur Hiro comme fallback -->
+        <a-marker preset="hiro" id="hiro-marker">
+            <!-- Message indiquant d'utiliser le marqueur personnalisé -->
+            <a-plane
+                position="0 0 0"
+                rotation="-90 0 0"
+                width="1" 
+                height="0.5"
+                color="#FF4444">
+                <a-text value="Utilisez le marqueur INKIA" align="center" color="white" scale="0.5 0.5 0.5"></a-text>
             </a-plane>
         </a-marker>
         
@@ -142,13 +190,27 @@
         let debugMode = false;
         let currentSize = "small"; // Par défaut: small (60×40cm)
         let currentScale = 1.0; // Échelle par défaut
+        // En tenant compte que votre marqueur est 19×19cm au lieu de 16×16cm (ajustement de 1.19x)
+        let markerSizeRatio = 19/16; // Ratio entre votre taille de marqueur réelle et celle attendue
+        
         let baseWidthSmall = 0.6;  // Largeur de base pour la petite image en mètres
         let baseHeightSmall = 0.4; // Hauteur de base pour la petite image en mètres
-        let baseWidthLarge = 1.2;  // Largeur de base pour la grande image en mètres
-        let baseHeightLarge = 0.9; // Hauteur de base pour la grande image en mètres
+        let baseWidthLarge = 0.9;  // Largeur de base pour la grande image en mètres (ajusté à 90cm)
+        let baseHeightLarge = 0.6; // Hauteur de base pour la grande image en mètres (ajusté à 60cm)
+        
+        // Ajuster les dimensions de base en fonction de la taille réelle du marqueur
+        baseWidthSmall = baseWidthSmall * markerSizeRatio;
+        baseHeightSmall = baseHeightSmall * markerSizeRatio;
+        baseWidthLarge = baseWidthLarge * markerSizeRatio;
+        baseHeightLarge = baseHeightLarge * markerSizeRatio;
         
         // Attendre que tout soit chargé
         window.addEventListener('load', function() {
+            // Afficher des instructions pour le marqueur personnalisé
+            document.getElementById('marker-info').innerHTML = 
+                `<p>Pour créer votre marqueur personnalisé "INKIA", imprimez l'image SVG fournie à 16×16 cm.</p>
+                <p>Assurez-vous que l'impression est bien contrastée (noir sur blanc).</p>`;
+            
             // Récupérer les éléments après leur création
             setTimeout(function() {
                 arScene = document.querySelector('a-scene');
@@ -157,23 +219,35 @@
                     markers = arScene.querySelectorAll('a-marker');
                     
                     // Événement pour détecter le marqueur
+                    const detectionIndicator = document.getElementById('detection-indicator');
+                    
                     markers.forEach(marker => {
                         marker.addEventListener('markerFound', function() {
                             isMarkerDetected = true;
-                            updateDebugInfo("Marqueur Hiro détecté ✓");
+                            const markerType = this.id === 'inkia-marker' ? 'INKIA' : 'HIRO';
+                            updateDebugInfo(`Marqueur ${markerType} détecté ✓`);
                             document.querySelector('.ar-instructions').textContent = 
-                                "Marqueur Hiro détecté! Utilisez les boutons pour changer l'image.";
+                                `Marqueur ${markerType} détecté! Utilisez les boutons pour changer l'image.`;
+                            
+                            // Activer l'indicateur de détection
+                            detectionIndicator.classList.add('detected');
                         });
                         
                         marker.addEventListener('markerLost', function() {
                             isMarkerDetected = false;
-                            updateDebugInfo("Marqueur Hiro perdu ✗");
+                            updateDebugInfo("Marqueur perdu ✗");
                             document.querySelector('.ar-instructions').textContent = 
-                                "Montrez le marqueur Hiro à la caméra pour afficher le tableau";
+                                "Montrez le marqueur INKIA à la caméra pour afficher le tableau";
+                            
+                            // Désactiver l'indicateur de détection
+                            detectionIndicator.classList.remove('detected');
                         });
                     });
                 }
             }, 2000);
+            
+            // Note explicative sur la détection de marqueur personnalisé
+            updateDebugInfo("Dans un contexte réel, un marqueur personnalisé nécessiterait de générer un fichier .patt et de l'héberger correctement.");
         });
         
         function switchToImage(imageId) {
@@ -190,7 +264,7 @@
                     tableau.setAttribute('height', scaledHeight);
                     cadre.setAttribute('width', scaledWidth + 0.05);
                     cadre.setAttribute('height', scaledHeight + 0.05);
-                    tableau.setAttribute('material', 'src', '#image1');
+                    tableau.setAttribute('material', 'src', '#image1; alphaTest: 0.5; transparent: true; shader: flat');
                     sizeInfo.textContent = `Taille actuelle: 60 × 40 cm (échelle: ${currentScale.toFixed(1)})`;
                     currentSize = "small";
                     updateDebugInfo(`Affichage de l'image 1 (60×40cm) à l'échelle ${currentScale.toFixed(2)}`);
@@ -202,14 +276,30 @@
                     tableau.setAttribute('height', scaledHeight);
                     cadre.setAttribute('width', scaledWidth + 0.05);
                     cadre.setAttribute('height', scaledHeight + 0.05);
-                    tableau.setAttribute('material', 'src', '#image2');
-                    sizeInfo.textContent = `Taille actuelle: 120 × 90 cm (échelle: ${currentScale.toFixed(1)})`;
+                    tableau.setAttribute('material', 'src', '#image2; alphaTest: 0.5; transparent: true; shader: flat');
+                    sizeInfo.textContent = `Taille actuelle: 90 × 60 cm (échelle: ${currentScale.toFixed(1)})`;
                     currentSize = "large";
-                    updateDebugInfo(`Affichage de l'image 2 (120×90cm) à l'échelle ${currentScale.toFixed(2)}`);
+                    updateDebugInfo(`Affichage de l'image 2 (90×60cm) à l'échelle ${currentScale.toFixed(2)}`);
                 }
             } catch (e) {
                 updateDebugInfo(`Erreur: ${e.message}`);
             }
+        }
+        
+        function adjustScale(factor) {
+            currentScale *= factor;
+            
+            // Limiter l'échelle entre 0.5 et 2.0 pour éviter des valeurs extrêmes
+            currentScale = Math.max(0.5, Math.min(currentScale, 2.0));
+            
+            // Mettre à jour le tableau avec la nouvelle échelle
+            switchToImage(currentSize === "small" ? 'image1' : 'image2');
+        }
+        
+        function resetScale() {
+            currentScale = 1.0;
+            switchToImage(currentSize === "small" ? 'image1' : 'image2');
+            updateDebugInfo("Échelle réinitialisée à 1.0");
         }
         
         function toggleDebug() {
@@ -246,27 +336,12 @@
             status += "- Marqueurs: " + (markers.length > 0 ? markers.length + " trouvés ✓" : "Aucun trouvé ✗") + "\n";
             status += "- Détection de marqueur: " + (isMarkerDetected ? "Oui ✓" : "Non ✗") + "\n";
             status += "- Taille actuelle: " + (currentSize === "small" ? "60×40cm" : "120×90cm") + "\n";
+            status += "- Échelle appliquée: " + currentScale.toFixed(2) + "\n";
             
-            // Informations sur l'appareil
-            status += "- Appareil: " + navigator.userAgent;
+            // Note sur les limitations
+            status += "\nNote: Dans un déploiement réel, un marqueur personnalisé nécessiterait un processus complet de génération.";
             
             updateDebugInfo(status);
-        }
-        
-        function adjustScale(factor) {
-            currentScale *= factor;
-            
-            // Limiter l'échelle entre 0.5 et 2.0 pour éviter des valeurs extrêmes
-            currentScale = Math.max(0.5, Math.min(currentScale, 2.0));
-            
-            // Mettre à jour le tableau avec la nouvelle échelle
-            switchToImage(currentSize === "small" ? 'image1' : 'image2');
-        }
-        
-        function resetScale() {
-            currentScale = 1.0;
-            switchToImage(currentSize === "small" ? 'image1' : 'image2');
-            updateDebugInfo("Échelle réinitialisée à 1.0");
         }
         
         function updateDebugInfo(text) {
