@@ -134,12 +134,15 @@
         <button onclick="toggleDebug()">Diagnostiquer</button>
     </div>
 
-    <!-- AR Scene avec auto-start -->
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;" vr-mode-ui="enabled: false">
+    <!-- AR Scene avec auto-start et paramètres optimisés -->
+    <a-scene embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best; maxDetectionRate: 60; canvasWidth: 1280; canvasHeight: 960;" 
+        vr-mode-ui="enabled: false"
+        renderer="antialias: true; colorManagement: true; sortObjects: true; precision: highp; logarithmicDepthBuffer: true">
         <!-- Définition des assets (textures) -->
         <a-assets>
-            <img id="image1" src="/image1.png" alt="image1" />
-            <img id="image2" src="/image2.png" alt="image2" />
+            <img id="image1" src="/api/placeholder/600/400" alt="image1" />
+            <img id="image2" src="/api/placeholder/1200/900" alt="image2" />
         </a-assets>
         
         <!-- Utilisons un marqueur Hiro et Kanji comme fallbacks, puisque les marqueurs personnalisés sont difficiles à implémenter ici -->
@@ -150,8 +153,8 @@
                 rotation="-90 0 0"
                 width="0.6" 
                 height="0.4"
-                material="src: #image1; transparent: true; opacity: 1; shader: flat; npot: true; alphaTest: 0.5"
-                animation="property: position; dur: 10000; from: 0 0 0; to: 0 0.002 0; dir: alternate; loop: true; easing: easeInOutSine">
+                material="src: #image1; transparent: true; opacity: 1; shader: flat; alphaTest: 0.5; color: #ffffff; side: double"
+                render-order="first">
             </a-plane>
             
             <!-- Cadre du tableau (légèrement plus grand) -->
@@ -175,19 +178,24 @@
         let debugMode = false;
         let currentSize = "small"; // Par défaut: small (60×40cm)
         let currentScale = 1.0; // Échelle par défaut
-        // En tenant compte que votre marqueur est 19×19cm au lieu de 16×16cm (ajustement de 1.19x)
-        let markerSizeRatio = 19/16; // Ratio entre votre taille de marqueur réelle et celle attendue
+        // Calibrage pour un marqueur Hiro de 16×16 cm
+        let markerSizeRatio = 1.0; // Nous utilisons maintenant le marqueur à sa taille standard de 16 cm
         
-        let baseWidthSmall = 0.6;  // Largeur de base pour la petite image en mètres
-        let baseHeightSmall = 0.4; // Hauteur de base pour la petite image en mètres
-        let baseWidthLarge = 0.9;  // Largeur de base pour la grande image en mètres (ajusté à 90cm)
-        let baseHeightLarge = 0.6; // Hauteur de base pour la grande image en mètres (ajusté à 60cm)
+        // Dimensions réelles attendues en mètres (rapport hauteur/largeur conservé)
+        let baseWidthSmall = 0.6;  // 60 cm
+        let baseHeightSmall = 0.4; // 40 cm
+        let baseWidthLarge = 0.9;  // 90 cm
+        let baseHeightLarge = 0.6; // 60 cm
         
-        // Ajuster les dimensions de base en fonction de la taille réelle du marqueur
-        baseWidthSmall = baseWidthSmall * markerSizeRatio;
-        baseHeightSmall = baseHeightSmall * markerSizeRatio;
-        baseWidthLarge = baseWidthLarge * markerSizeRatio;
-        baseHeightLarge = baseHeightLarge * markerSizeRatio;
+        // Facteur de correction pour ajuster l'échelle des objets AR par rapport au marqueur
+        // Plus cette valeur est grande, plus les objets seront grands
+        let sizeCorrection = 2.4; // Facteur correctif pour avoir une taille de 60 cm réels
+        
+        // Appliquer les corrections
+        baseWidthSmall = baseWidthSmall * sizeCorrection;
+        baseHeightSmall = baseHeightSmall * sizeCorrection;
+        baseWidthLarge = baseWidthLarge * sizeCorrection;
+        baseHeightLarge = baseHeightLarge * sizeCorrection;
         
         // Attendre que tout soit chargé
         window.addEventListener('load', function() {
@@ -249,8 +257,8 @@
                     tableau.setAttribute('height', scaledHeight);
                     cadre.setAttribute('width', scaledWidth + 0.05);
                     cadre.setAttribute('height', scaledHeight + 0.05);
-                    tableau.setAttribute('material', 'src', '#image1; alphaTest: 0.5; transparent: true; shader: flat');
-                    sizeInfo.textContent = `Taille actuelle: 60 × 40 cm (échelle: ${currentScale.toFixed(1)})`;
+                    tableau.setAttribute('material', 'src', '#image1; transparent: true; opacity: 1; shader: flat; alphaTest: 0.5; color: #ffffff; side: double');
+                    sizeInfo.textContent = `Taille réelle: 60 × 40 cm (échelle: ${currentScale.toFixed(1)})`;
                     currentSize = "small";
                     updateDebugInfo(`Affichage de l'image 1 (60×40cm) à l'échelle ${currentScale.toFixed(2)}`);
                 } else if (imageId === 'image2') {
@@ -261,8 +269,8 @@
                     tableau.setAttribute('height', scaledHeight);
                     cadre.setAttribute('width', scaledWidth + 0.05);
                     cadre.setAttribute('height', scaledHeight + 0.05);
-                    tableau.setAttribute('material', 'src', '#image2; alphaTest: 0.5; transparent: true; shader: flat');
-                    sizeInfo.textContent = `Taille actuelle: 90 × 60 cm (échelle: ${currentScale.toFixed(1)})`;
+                    tableau.setAttribute('material', 'src', '#image2; transparent: true; opacity: 1; shader: flat; alphaTest: 0.5; color: #ffffff; side: double');
+                    sizeInfo.textContent = `Taille réelle: 90 × 60 cm (échelle: ${currentScale.toFixed(1)})`;
                     currentSize = "large";
                     updateDebugInfo(`Affichage de l'image 2 (90×60cm) à l'échelle ${currentScale.toFixed(2)}`);
                 }
