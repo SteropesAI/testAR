@@ -4,20 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Tableau Application</title>
-    <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@<version>/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@<version>/examples/jsm/"
-    }
-  }
-</script>
+    <!-- Chargement des dernières versions des bibliothèques -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ar.js/2.4.0/aframe-ar.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body {
             margin: 0;
             overflow: hidden;
+            font-family: Arial, sans-serif;
         }
         .ar-instructions {
             position: fixed;
@@ -28,14 +22,14 @@
             color: white;
             padding: 10px;
             border-radius: 5px;
-            font-family: Arial, sans-serif;
             z-index: 999;
+            text-align: center;
         }
         .controls {
             position: fixed;
-            bottom: 10px;
-            left: 10px;
-            right: 10px;
+            bottom: 20px;
+            left: 0;
+            right: 0;
             display: flex;
             justify-content: center;
             gap: 10px;
@@ -49,14 +43,52 @@
             border-radius: 5px;
             font-size: 16px;
         }
+        #camera-permission {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+        }
+        #camera-permission button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #4285f4;
+        }
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            text-align: center;
+            max-width: 80%;
+        }
     </style>
 </head>
 <body>
-    <div class="ar-instructions">
+    <div id="camera-permission">
+        <h2>Accès à la caméra nécessaire</h2>
+        <p>Cette application AR a besoin d'accéder à votre caméra pour fonctionner.</p>
+        <button id="permission-button">Autoriser l'accès à la caméra</button>
+    </div>
+
+    <div class="ar-instructions" style="display: none;">
         Montrez le marqueur Hiro à la caméra pour afficher le tableau de 90x60 cm
     </div>
     
-    <div class="controls">
+    <div class="controls" style="display: none;">
         <button onclick="changeColor('#FF5733')">Rouge</button>
         <button onclick="changeColor('#33FF57')">Vert</button>
         <button onclick="changeColor('#3357FF')">Bleu</button>
@@ -64,42 +96,93 @@
         <button onclick="changeTexture('marbre')">Texture Marbre</button>
     </div>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;">
-        <!-- Définition des assets (textures) -->
-        <a-assets>
-            <img id="texture-bois" src="/api/placeholder/500/300" alt="texture bois" />
-            <img id="texture-marbre" src="/api/placeholder/500/300" alt="texture marbre" />
-        </a-assets>
-        
-        <!-- Marqueur Hiro -->
-        <a-marker preset="hiro">
-            <!-- Notre tableau (90cm x 60cm) -->
-            <a-box id="tableau"
-                position="0 0 0"
-                rotation="-90 0 0"
-                width="0.9" 
-                height="0.05" 
-                depth="0.6"
-                color="#ffffff"
-                material="opacity: 0.9;">
-            </a-box>
+    <div id="ar-scene" style="display: none;">
+        <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;">
+            <!-- Définition des assets (textures) -->
+            <a-assets>
+                <img id="texture-bois" src="/api/placeholder/500/300" alt="texture bois" />
+                <img id="texture-marbre" src="/api/placeholder/500/300" alt="texture marbre" />
+            </a-assets>
             
-            <!-- Petit texte explicatif -->
-            <a-text 
-                value="Tableau 90x60 cm" 
-                position="0 0.1 0" 
-                rotation="-90 0 0" 
-                align="center" 
-                color="#000000"
-                scale="0.5 0.5 0.5">
-            </a-text>
-        </a-marker>
-        
-        <!-- Configuration de la caméra -->
-        <a-entity camera></a-entity>
-    </a-scene>
+            <!-- Marqueur Hiro -->
+            <a-marker preset="hiro">
+                <!-- Notre tableau (90cm x 60cm) -->
+                <a-box id="tableau"
+                    position="0 0 0"
+                    rotation="-90 0 0"
+                    width="0.9" 
+                    height="0.05" 
+                    depth="0.6"
+                    color="#ffffff"
+                    material="opacity:.9;">
+                </a-box>
+                
+                <!-- Petit texte explicatif -->
+                <a-text 
+                    value="Tableau 90x60 cm" 
+                    position="0 0.1 0" 
+                    rotation="-90 0 0" 
+                    align="center" 
+                    color="#000000"
+                    scale="0.5 0.5 0.5">
+                </a-text>
+            </a-marker>
+            
+            <!-- Configuration de la caméra -->
+            <a-entity camera></a-entity>
+        </a-scene>
+    </div>
 
     <script>
+        // Vérification du support de la caméra
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showError("Votre navigateur ne supporte pas l'accès à la caméra. Veuillez essayer avec Chrome ou Firefox récent.");
+                return;
+            }
+            
+            // Bouton pour demander la permission
+            document.getElementById('permission-button').addEventListener('click', function() {
+                requestCameraPermission();
+            });
+        });
+
+        function requestCameraPermission() {
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(function(stream) {
+                    // Succès - la caméra est accessible
+                    document.getElementById('camera-permission').style.display = 'none';
+                    document.getElementById('ar-scene').style.display = 'block';
+                    document.querySelector('.ar-instructions').style.display = 'block';
+                    document.querySelector('.controls').style.display = 'flex';
+                    
+                    // Arrêter le stream car AR.js va le relancer
+                    stream.getTracks().forEach(track => track.stop());
+                    
+                    // Vérifier le chargement d'AR.js
+                    setTimeout(checkARJSLoaded, 3000);
+                })
+                .catch(function(err) {
+                    showError("Erreur d'accès à la caméra: " + err.message + ". Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur.");
+                });
+        }
+
+        function checkARJSLoaded() {
+            // Vérifier si AR.js est correctement chargé
+            if (typeof AFRAME === 'undefined' || !AFRAME.scenes[0].systems['arjs']) {
+                showError("AR.js n'a pas pu être chargé correctement. Veuillez rafraîchir la page ou essayer un autre navigateur.");
+            }
+        }
+
+        function showError(message) {
+            // Créer et afficher un message d'erreur
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.innerHTML = `<p>${message}</p><button onclick="location.reload()">Réessayer</button>`;
+            document.body.appendChild(errorDiv);
+            document.getElementById('camera-permission').style.display = 'none';
+        }
+        
         function changeColor(color) {
             document.getElementById('tableau').setAttribute('color', color);
         }
@@ -110,14 +193,6 @@
             } else if (type === 'marbre') {
                 document.getElementById('tableau').setAttribute('material', 'src', '#texture-marbre');
             }
-        }
-        
-        // Ajouter des messages pour l'utilisateur
-        window.onload = function() {
-            setTimeout(function() {
-                document.querySelector('.ar-instructions').textContent = 
-                    "Le tableau virtuel de 90x60 cm s'affichera sur le marqueur Hiro. Utilisez les boutons pour changer son apparence.";
-            }, 5000);
         }
     </script>
 </body>
