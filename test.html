@@ -4,14 +4,18 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Tableau Application</title>
-    <!-- Chargement des dernières versions des bibliothèques -->
+    <!-- Chargement des bibliothèques -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         body {
             margin: 0;
+            padding: 0;
             overflow: hidden;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        .a-enter-ar, .a-enter-vr {
+            display: none !important;
         }
         .ar-instructions {
             position: fixed;
@@ -34,6 +38,8 @@
             justify-content: center;
             gap: 10px;
             z-index: 999;
+            flex-wrap: wrap;
+            padding: 0 10px;
         }
         button {
             padding: 10px 15px;
@@ -42,156 +48,175 @@
             border: none;
             border-radius: 5px;
             font-size: 16px;
+            margin: 5px;
         }
-        #camera-permission {
+        #debug-info {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
+            bottom: 80px;
+            left: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
             color: white;
-        }
-        #camera-permission button {
-            margin-top: 20px;
-            padding: 12px 24px;
-            background-color: #4285f4;
-        }
-        .error-message {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(255, 0, 0, 0.7);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            z-index: 1000;
-            text-align: center;
-            max-width: 80%;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 999;
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div id="camera-permission">
-        <h2>Accès à la caméra nécessaire</h2>
-        <p>Cette application AR a besoin d'accéder à votre caméra pour fonctionner.</p>
-        <button id="permission-button">Autoriser l'accès à la caméra</button>
-    </div>
-
-    <div class="ar-instructions" style="display: none;">
+    <div class="ar-instructions">
         Montrez le marqueur Hiro à la caméra pour afficher le tableau de 90x60 cm
     </div>
     
-    <div class="controls" style="display: none;">
+    <div id="debug-info"></div>
+    
+    <div class="controls">
         <button onclick="changeColor('#FF5733')">Rouge</button>
         <button onclick="changeColor('#33FF57')">Vert</button>
         <button onclick="changeColor('#3357FF')">Bleu</button>
         <button onclick="changeTexture('bois')">Texture Bois</button>
         <button onclick="changeTexture('marbre')">Texture Marbre</button>
+        <button onclick="toggleDebug()">Diagnostiquer</button>
     </div>
 
-    <div id="ar-scene" style="display: none;">
-        <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;">
-            <!-- Définition des assets (textures) -->
-            <a-assets>
-                <img id="texture-bois" src="/api/placeholder/500/300" alt="texture bois" />
-                <img id="texture-marbre" src="/api/placeholder/500/300" alt="texture marbre" />
-            </a-assets>
+    <!-- AR Scene avec auto-start -->
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;" vr-mode-ui="enabled: false">
+        <!-- Définition des assets (textures) -->
+        <a-assets>
+            <img id="texture-bois" src="/api/placeholder/500/300" alt="texture bois" />
+            <img id="texture-marbre" src="/api/placeholder/500/300" alt="texture marbre" />
+        </a-assets>
+        
+        <!-- Marqueur Hiro -->
+        <a-marker preset="hiro">
+            <!-- Notre tableau (90cm x 60cm) -->
+            <a-box id="tableau"
+                position="0 0 0"
+                rotation="-90 0 0"
+                width="0.9" 
+                height="0.05" 
+                depth="0.6"
+                color="#ffffff"
+                material="opacity:.9;">
+            </a-box>
             
-            <!-- Marqueur Hiro -->
-            <a-marker preset="hiro">
-                <!-- Notre tableau (90cm x 60cm) -->
-                <a-box id="tableau"
-                    position="0 0 0"
-                    rotation="-90 0 0"
-                    width="0.9" 
-                    height="0.05" 
-                    depth="0.6"
-                    color="#ffffff"
-                    material="opacity:.9;">
-                </a-box>
-                
-                <!-- Petit texte explicatif -->
-                <a-text 
-                    value="Tableau 90x60 cm" 
-                    position="0 0.1 0" 
-                    rotation="-90 0 0" 
-                    align="center" 
-                    color="#000000"
-                    scale="0.5 0.5 0.5">
-                </a-text>
-            </a-marker>
-            
-            <!-- Configuration de la caméra -->
-            <a-entity camera></a-entity>
-        </a-scene>
-    </div>
+            <!-- Petit texte explicatif -->
+            <a-text 
+                value="Tableau 90x60 cm" 
+                position="0 0.1 0" 
+                rotation="-90 0 0" 
+                align="center" 
+                color="#000000"
+                scale="0.5 0.5 0.5">
+            </a-text>
+        </a-marker>
+        
+        <!-- Configuration de la caméra -->
+        <a-entity camera></a-entity>
+    </a-scene>
 
     <script>
-        // Vérification du support de la caméra
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showError("Votre navigateur ne supporte pas l'accès à la caméra. Veuillez essayer avec Chrome ou Firefox récent.");
-                return;
-            }
-            
-            // Bouton pour demander la permission
-            document.getElementById('permission-button').addEventListener('click', function() {
-                requestCameraPermission();
-            });
+        // Variables pour le débug
+        let arScene, arCamera, markers = [];
+        let isMarkerDetected = false;
+        let debugMode = false;
+        
+        // Attendre que tout soit chargé
+        window.addEventListener('load', function() {
+            // Récupérer les éléments après leur création
+            setTimeout(function() {
+                arScene = document.querySelector('a-scene');
+                if (arScene) {
+                    arCamera = arScene.querySelector('[camera]');
+                    markers = arScene.querySelectorAll('a-marker');
+                    
+                    // Événement pour détecter le marqueur
+                    markers.forEach(marker => {
+                        marker.addEventListener('markerFound', function() {
+                            isMarkerDetected = true;
+                            updateDebugInfo("Marqueur Hiro détecté ✓");
+                            document.querySelector('.ar-instructions').textContent = 
+                                "Marqueur Hiro détecté! Utilisez les boutons pour personnaliser le tableau.";
+                        });
+                        
+                        marker.addEventListener('markerLost', function() {
+                            isMarkerDetected = false;
+                            updateDebugInfo("Marqueur Hiro perdu ✗");
+                            document.querySelector('.ar-instructions').textContent = 
+                                "Montrez le marqueur Hiro à la caméra pour afficher le tableau de 90x60 cm";
+                        });
+                    });
+                }
+            }, 2000);
         });
-
-        function requestCameraPermission() {
-            navigator.mediaDevices.getUserMedia({ video: true })
-                .then(function(stream) {
-                    // Succès - la caméra est accessible
-                    document.getElementById('camera-permission').style.display = 'none';
-                    document.getElementById('ar-scene').style.display = 'block';
-                    document.querySelector('.ar-instructions').style.display = 'block';
-                    document.querySelector('.controls').style.display = 'flex';
-                    
-                    // Arrêter le stream car AR.js va le relancer
-                    stream.getTracks().forEach(track => track.stop());
-                    
-                    // Vérifier le chargement d'AR.js
-                    setTimeout(checkARJSLoaded, 3000);
-                })
-                .catch(function(err) {
-                    showError("Erreur d'accès à la caméra: " + err.message + ". Veuillez autoriser l'accès à la caméra dans les paramètres de votre navigateur.");
-                });
-        }
-
-        function checkARJSLoaded() {
-            // Vérifier si AR.js est correctement chargé
-            if (typeof AFRAME === 'undefined' || !AFRAME.scenes[0].systems['arjs']) {
-                showError("AR.js n'a pas pu être chargé correctement. Veuillez rafraîchir la page ou essayer un autre navigateur.");
-            }
-        }
-
-        function showError(message) {
-            // Créer et afficher un message d'erreur
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'error-message';
-            errorDiv.innerHTML = `<p>${message}</p><button onclick="location.reload()">Réessayer</button>`;
-            document.body.appendChild(errorDiv);
-            document.getElementById('camera-permission').style.display = 'none';
-        }
         
         function changeColor(color) {
             document.getElementById('tableau').setAttribute('color', color);
+            updateDebugInfo(`Couleur changée: ${color}`);
         }
         
         function changeTexture(type) {
-            if (type === 'bois') {
-                document.getElementById('tableau').setAttribute('material', 'src', '#texture-bois');
-            } else if (type === 'marbre') {
-                document.getElementById('tableau').setAttribute('material', 'src', '#texture-marbre');
+            try {
+                if (type === 'bois') {
+                    document.getElementById('tableau').setAttribute('material', 'src', '#texture-bois');
+                    updateDebugInfo("Texture bois appliquée");
+                } else if (type === 'marbre') {
+                    document.getElementById('tableau').setAttribute('material', 'src', '#texture-marbre');
+                    updateDebugInfo("Texture marbre appliquée");
+                }
+            } catch (e) {
+                updateDebugInfo(`Erreur: ${e.message}`);
+            }
+        }
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.style.display = debugMode ? 'block' : 'none';
+            
+            if (debugMode) {
+                checkARComponents();
+            }
+        }
+        
+        function checkARComponents() {
+            let status = "Diagnostic AR:\n";
+            
+            // Vérifier A-Frame
+            status += "- A-Frame: " + (typeof AFRAME !== 'undefined' ? "Chargé ✓" : "Non chargé ✗") + "\n";
+            
+            // Vérifier AR.js
+            status += "- AR.js: " + (AFRAME && AFRAME.components && AFRAME.components.arjs ? "Chargé ✓" : "Non chargé ✗") + "\n";
+            
+            // Vérifier la caméra
+            if (arCamera) {
+                status += "- Caméra: Initialisée ✓\n";
+                
+                // Vérifier si la caméra est active
+                const video = document.querySelector('video');
+                status += "- Flux vidéo: " + (video && !video.paused ? "Actif ✓" : "Inactif ✗") + "\n";
+            } else {
+                status += "- Caméra: Non initialisée ✗\n";
+            }
+            
+            // Vérifier les marqueurs
+            status += "- Marqueurs: " + (markers.length > 0 ? markers.length + " trouvés ✓" : "Aucun trouvé ✗") + "\n";
+            status += "- Détection de marqueur: " + (isMarkerDetected ? "Oui ✓" : "Non ✗") + "\n";
+            
+            // Informations sur l'appareil
+            status += "- Appareil: " + navigator.userAgent;
+            
+            updateDebugInfo(status);
+        }
+        
+        function updateDebugInfo(text) {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.innerText = text;
+            
+            if (!debugMode) {
+                console.log(text);
             }
         }
     </script>
