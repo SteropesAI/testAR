@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Débogage Tableau AR</title>
+    <title>Débogage Tableau AR Avancé</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
@@ -11,15 +11,20 @@
             margin: 0; 
             overflow: hidden; 
             font-family: Arial, sans-serif; 
+            background: black;
+            color: white;
         }
-        #debug-info {
+        #debug-console {
             position: fixed;
-            top: 10px;
-            left: 10px;
-            background: white;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.7);
             padding: 10px;
             z-index: 1000;
-            border: 2px solid red;
+            white-space: pre-wrap;
+            overflow: auto;
+            max-height: 200px;
         }
         #controls {
             position: fixed;
@@ -28,38 +33,42 @@
             text-align: center;
             z-index: 1000;
         }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 5px;
+        }
+        #imageInput {
+            display: none;
+        }
     </style>
 </head>
 <body>
-    <div id="debug-info">
-        <h3>Informations de Débogage</h3>
-        <p id="status">Chargement en cours...</p>
-        <p id="error-details"></p>
-    </div>
+    <div id="debug-console">Initialisation de l'application AR...</div>
+
+    <input type="file" id="imageInput" accept="image/*">
 
     <a-scene 
         embedded 
         arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: true;"
         vr-mode-ui="enabled: false"
     >
-        <!-- Utilisation d'un marqueur prédéfini pour les tests -->
-        <a-marker preset="hiro">
-            <!-- Cube de test par défaut -->
-            <a-box 
-                position="0 0.5 0" 
-                material="color: red; opacity: 0.7"
-                rotation="0 45 0"
-            >
-            </a-box>
-            
-            <!-- Texte de test -->
-            <a-text 
-                value="Test AR" 
-                position="0 1 0" 
-                scale="0.5 0.5 0.5" 
-                color="#000000"
-            >
-            </a-text>
+        <!-- Marqueur Hiro par défaut -->
+        <a-marker preset="hiro" id="ar-marker">
+            <!-- Conteneur pour l'image -->
+            <a-entity id="image-container">
+                <a-plane 
+                    width="1" 
+                    height="1" 
+                    position="0 0.5 0"
+                    rotation="-90 0 0"
+                    color="#FFFFFF"
+                >
+                </a-plane>
+            </a-entity>
         </a-marker>
 
         <!-- Caméra -->
@@ -67,56 +76,107 @@
     </a-scene>
 
     <div id="controls">
-        <button id="reset-ar">Réinitialiser AR</button>
+        <button id="load-image-btn">Charger une Image</button>
+        <button id="check-marker-btn">Vérifier le Marqueur</button>
     </div>
 
     <script>
         // Fonction de débogage
-        function updateDebugInfo(message) {
-            const statusEl = document.getElementById('status');
-            const errorEl = document.getElementById('error-details');
-            
-            statusEl.textContent = message;
-            
-            // Journalisation des erreurs
+        function debugLog(message) {
+            const debugConsole = document.getElementById('debug-console');
+            debugConsole.textContent += '\n' + message;
             console.log(message);
+            
+            // Alerte temporaire
+            const tempAlert = document.createElement('div');
+            tempAlert.style.position = 'fixed';
+            tempAlert.style.top = '50%';
+            tempAlert.style.left = '50%';
+            tempAlert.style.transform = 'translate(-50%, -50%)';
+            tempAlert.style.background = 'rgba(0,0,0,0.7)';
+            tempAlert.style.color = 'white';
+            tempAlert.style.padding = '20px';
+            tempAlert.style.borderRadius = '10px';
+            tempAlert.textContent = message;
+            document.body.appendChild(tempAlert);
+            
+            setTimeout(() => {
+                document.body.removeChild(tempAlert);
+            }, 2000);
         }
 
-        // Événements de la scène AR
-        const scene = document.querySelector('a-scene');
-        
-        scene.addEventListener('loaded', () => {
-            updateDebugInfo('Scène AR chargée avec succès');
-        });
-
-        scene.addEventListener('arError', (event) => {
-            updateDebugInfo('Erreur AR : ' + event.detail);
-        });
-
-        // Bouton de réinitialisation
-        document.getElementById('reset-ar').addEventListener('click', () => {
-            scene.enterARMode();
-            updateDebugInfo('AR réinitialisé');
-        });
-
-        // Vérification de compatibilité
+        // Initialisation
         window.addEventListener('load', () => {
-            if (!AFRAME || !window.ARjs) {
-                updateDebugInfo('Erreur : AR.js ou AFRAME non chargé');
-            }
+            debugLog('Application chargée');
 
-            // Vérification des permissions
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(response => {
-                        if (response == 'granted') {
-                            updateDebugInfo('Permissions accordées');
-                        } else {
-                            updateDebugInfo('Permissions refusées');
-                        }
-                    })
-                    .catch(console.error);
+            // Vérification des bibliothèques
+            if (!AFRAME) {
+                debugLog('ERREUR : AFRAME non chargé');
             }
+            if (!window.ARjs) {
+                debugLog('ERREUR : AR.js non chargé');
+            }
+        });
+
+        // Gestion du marqueur
+        const arMarker = document.getElementById('ar-marker');
+        arMarker.addEventListener('markerFound', () => {
+            debugLog('✅ MARQUEUR DÉTECTÉ !');
+        });
+
+        arMarker.addEventListener('markerLost', () => {
+            debugLog('❌ Marqueur perdu');
+        });
+
+        // Bouton de vérification de marqueur
+        const checkMarkerBtn = document.getElementById('check-marker-btn');
+        checkMarkerBtn.addEventListener('click', () => {
+            debugLog('Vérification du marqueur en cours...');
+            // Simulation de vérification
+            setTimeout(() => {
+                debugLog('Utilisez le marqueur Hiro standard');
+            }, 1000);
+        });
+
+        // Chargement d'image
+        const loadImageBtn = document.getElementById('load-image-btn');
+        const imageInput = document.getElementById('imageInput');
+        const imageContainer = document.getElementById('image-container');
+
+        loadImageBtn.addEventListener('click', () => {
+            debugLog('Sélection d\'image');
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                debugLog('Image sélectionnée');
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    // Créer une nouvelle image
+                    const imagePlane = document.createElement('a-image');
+                    imagePlane.setAttribute('src', e.target.result);
+                    imagePlane.setAttribute('width', '1');
+                    imagePlane.setAttribute('height', '1');
+                    imagePlane.setAttribute('position', '0 0.5 0');
+                    imagePlane.setAttribute('rotation', '-90 0 0');
+
+                    // Vider le conteneur et ajouter la nouvelle image
+                    imageContainer.innerHTML = '';
+                    imageContainer.appendChild(imagePlane);
+
+                    debugLog('✅ Image chargée avec succès !');
+                };
+
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Gestion des erreurs
+        window.addEventListener('error', (event) => {
+            debugLog('ERREUR GLOBALE : ' + event.message);
         });
     </script>
 </body>
