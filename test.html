@@ -30,6 +30,9 @@
             justify-content: center;
             z-index: 1000;
         }
+        #imageInput {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -44,21 +47,15 @@
     </div>
 
     <a-scene embedded arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
-        <!-- Marqueur AR -->
+        <!-- 
+            IMPORTANT : Ici, vous devez charger VOTRE propre fichier de marqueur AR 
+            Remplacez 'htag-marker.patt' par le chemin de votre marqueur 
+            Généré à partir du H-Tag que vous avez imprimé
+        -->
         <a-marker type="pattern" url="htag-marker.patt">
-            <!-- Tableau 3D -->
-            <a-entity 
-                geometry="primitive: box; width: 1.2; height: 0.8; depth: 0.05" 
-                material="color: white; opacity: 0.8"
-                rotation="0 0 0"
-                position="0 0 0">
-            </a-entity>
-            
-            <!-- Cadre du tableau -->
-            <a-entity 
-                geometry="primitive: box; width: 1.25; height: 0.85; depth: 0.01" 
-                material="color: brown; opacity: 0.5"
-                position="0 0 -0.03">
+            <!-- Conteneur pour l'image ou le tableau -->
+            <a-entity id="tableau-container">
+                <!-- Le contenu sera ajouté dynamiquement ici -->
             </a-entity>
         </a-marker>
 
@@ -67,19 +64,43 @@
     </a-scene>
 
     <div id="controls">
-        <button id="changeColor">Changer la couleur</button>
+        <input type="file" id="imageInput" accept="image/*">
+        <button id="loadImage">Charger une Image de Test</button>
     </div>
 
     <script>
-        // Gestion du changement de couleur
-        const changeColorBtn = document.getElementById('changeColor');
-        const tableau = document.querySelector('a-entity[geometry="primitive: box"]');
-        const colors = ['white', 'blue', 'green', 'red', 'yellow'];
-        let colorIndex = 0;
+        const loadImageBtn = document.getElementById('loadImage');
+        const imageInput = document.getElementById('imageInput');
+        const tableauContainer = document.querySelector('#tableau-container');
 
-        changeColorBtn.addEventListener('click', () => {
-            colorIndex = (colorIndex + 1) % colors.length;
-            tableau.setAttribute('material', `color: ${colors[colorIndex]}; opacity: 0.8`);
+        loadImageBtn.addEventListener('click', () => {
+            imageInput.click();
+        });
+
+        imageInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    // Supprimer le contenu précédent
+                    tableauContainer.innerHTML = '';
+
+                    // Créer une nouvelle entité image
+                    const imageEl = document.createElement('a-image');
+                    imageEl.setAttribute('src', e.target.result);
+                    
+                    // Dimensionnement et positionnement
+                    imageEl.setAttribute('width', '1.2');
+                    imageEl.setAttribute('height', '0.8');
+                    imageEl.setAttribute('rotation', '-90 0 0');
+                    
+                    // Ajouter l'image au conteneur
+                    tableauContainer.appendChild(imageEl);
+                };
+
+                reader.readAsDataURL(file);
+            }
         });
 
         // Avertissement pour les navigateurs non compatibles
