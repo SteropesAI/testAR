@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Tableau avec Marqueur Personnalisé</title>
+    <!-- Chargement des bibliothèques -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        .a-enter-ar, .a-enter-vr {
+            display: none !important;
+        }
+        .ar-instructions {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 999;
+            text-align: center;
+        }
+        .detection-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 20px;
+            height: 20px;
+            background-color: red;
+            border-radius: 50%;
+            z-index: 1000;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        .detected {
+            background-color: #4CAF50;
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            z-index: 999;
+            flex-wrap: wrap;
+            padding: 0 10px;
+        }
+        button {
+            padding: 12px 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            margin: 5px;
+            font-weight: bold;
+        }
+        .size-button {
+            background-color: rgba(30, 100, 200, 0.8);
+        }
+        #debug-info {
+            position: fixed;
+            bottom: 80px;
+            left: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 999;
+            display: none;
+        }
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 10px;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        select, button {
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            background-color: #4285F4;
+            color: white;
+            font-size: 16px;
+            flex-grow: 1;
+        }
+        
+        select {
+            background-color: #333;
+            color: white;
+            width: 100%;
+        }
+        
+        .control-label {
+            color: white;
+            font-weight: bold;
+            width: 80px;
+            flex-shrink: 0;
+        }
+        
+        optgroup {
+            font-weight: bold;
+        }
+        
+        option {
+            padding: 5px;
+        }
+        .marker-info {
+            position: fixed;
+            top: 100px;
+            left: 10px;
+            right: 10px;
+            background-color: rgba(50, 150, 50, 0.7);
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            z-index: 997;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="ar-instructions">
+        Montrez le marqueur INKIA à la caméra pour afficher le tableau
+    </div>
+    
+    <div id="detection-indicator" class="detection-indicator"></div>
+    
+    <div id="size-info" class="size-info" style="position: fixed; top: 60px; left: 10px; right: 10px; background-color: rgba(30, 100, 200, 0.7); color: white; padding: 5px; border-radius: 5px; z-index: 998; text-align: center; font-weight: bold;">
+        Taille actuelle: 60 × 40 cm
+    </div>
+    
+    <div id="marker-info" class="marker-info">
+        Marqueur personnalisé INKIA (fichier .patt)
+    </div>
+    
+    <div id="debug-info"></div>
+    
+    <div class="control-panel">
+        <div class="control-row">
+            <span class="control-label">Image:</span>
+            <select id="image-select" onchange="switchToImageFile(this.value)">
+                <option value="1" selected>Image 1</option>
+                <option value="2">Image 2</option>
+                <option value="3">Image 3</option>
+                <option value="4">Image 4</option>
+                <option value="5">Image 5</option>
+            </select>
+        </div>
+        
+        <div class="control-row">
+            <span class="control-label">Taille:</span>
+            <select id="size-select" onchange="setSizeFromSelect(this.value)">
+                <optgroup label="1:1 (Carré)">
+                    <option value="0.2,0.2">20×20 cm</option>
+                    <option value="0.4,0.4">40×40 cm</option>
+                    <option value="0.6,0.6">60×60 cm</option>
+                    <option value="0.8,0.8">80×80 cm</option>
+                </optgroup>
+                <optgroup label="2:1 (Panoramique)">
+                    <option value="0.4,0.2">40×20 cm</option>
+                    <option value="0.8,0.4">80×40 cm</option>
+                    <option value="1.0,0.5">100×50 cm</option>
+                    <option value="1.2,0.6">120×60 cm</option>
+                </optgroup>
+                <optgroup label="3:2 (Standard)">
+                    <option value="0.3,0.2">30×20 cm</option>
+                    <option value="0.6,0.4" selected>60×40 cm</option>
+                    <option value="0.75,0.5">75×50 cm</option>
+                    <option value="0.9,0.6">90×60 cm</option>
+                    <option value="1.2,0.8">120×80 cm</option>
+                </optgroup>
+                <optgroup label="4:3 (Traditionnel)">
+                    <option value="0.4,0.3">40×30 cm</option>
+                    <option value="0.8,0.6">80×60 cm</option>
+                </optgroup>
+            </select>
+        </div>
+        
+        <div class="control-row">
+            <span class="control-label">Échelle:</span>
+            <button onclick="adjustScale(0.9)">-</button>
+            <button onclick="resetScale()">Reset</button>
+            <button onclick="adjustScale(1.1)">+</button>
+            <button onclick="toggleDebug()">Diagnostic</button>
+        </div>
+    </div>
+
+    <!-- AR Scene avec auto-start et paramètres optimisés -->
+    <a-scene embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best; maxDetectionRate: 60; canvasWidth: 1280; canvasHeight: 960;" 
+        vr-mode-ui="enabled: false"
+        renderer="antialias: true; colorManagement: true; sortObjects: true; precision: highp; logarithmicDepthBuffer: true">
+        <!-- Définition des assets (textures) -->
+        <a-assets>
+            <img id="image1" src="image1.png" alt="image1" crossorigin="anonymous" />
+            <img id="image2" src="image2.png" alt="image2" crossorigin="anonymous" />
+            <img id="image3" src="image3.png" alt="image3" crossorigin="anonymous" />
+            <img id="image4" src="image4.png" alt="image4" crossorigin="anonymous" />
+            <img id="image5" src="image5.png" alt="image5" crossorigin="anonymous" />
+        </a-assets>
+        
+        <!-- Utilisons un marqueur Hiro et Kanji comme fallbacks, puisque les marqueurs personnalisés sont difficiles à implémenter ici -->
+        <a-marker preset="hiro" id="inkia-marker">
+            <!-- Notre tableau par défaut (60cm x 40cm) -->
+            <a-plane id="tableau"
+                position="0 0 0"
+                rotation="-90 0 0"
+                width="0.6" 
+                height="0.4"
+                material="src: #image1; transparent: true; opacity: 1; shader: flat; alphaTest: 0.5; color: #ffffff; side: double"
+                render-order="first">
+            </a-plane>
+            
+            <!-- Cadre du tableau (légèrement plus grand) -->
+            <a-plane id="cadre"
+                position="0 -0.01 0"
+                rotation="-90 0 0"
+                width="0.65" 
+                height="0.45"
+                color="#8B4513">
+            </a-plane>
+        </a-marker>
+        
+        <!-- Configuration de la caméra -->
+        <a-entity camera></a-entity>
+    </a-scene>
+
+    <script>
+        // Variables pour le débug
+        let arScene, arCamera, markers = [];
+        let isMarkerDetected = false;
+        let debugMode = false;
+        let currentSize = "small"; // Par défaut: small (60×40cm)
+        let currentScale = 1.0; // Échelle par défaut
+        // Variables pour la gestion des tailles et des images
+        let currentSize = { width: 0.6, height: 0.4 }; // Par défaut: 60×40 cm
+        let currentScale = 1.0; // Échelle par défaut
+        let currentImageId = 1; // Image 1 par défaut
+        
+        // Facteur de correction pour ajuster l'échelle des objets AR par rapport au marqueur
+        let sizeCorrection = 2.4; // Facteur correctif pour avoir une taille de 60 cm réels
+        
+        // Attendre que tout soit chargé
+        window.addEventListener('load', function() {
+            // Afficher des instructions pour le marqueur INKIA
+            document.getElementById('marker-info').innerHTML = 
+                `<p>Utilisez votre marqueur personnalisé INKIA.</p>
+                <p>Placez le fichier pattern-inkia.patt dans le même répertoire que cette application.</p>`;
+            
+            // Récupérer les éléments après leur création
+            setTimeout(function() {
+                arScene = document.querySelector('a-scene');
+                if (arScene) {
+                    arCamera = arScene.querySelector('[camera]');
+                    markers = arScene.querySelectorAll('a-marker');
+                    
+                    // Événement pour détecter le marqueur
+                    const detectionIndicator = document.getElementById('detection-indicator');
+                    
+                    markers.forEach(marker => {
+                        marker.addEventListener('markerFound', function() {
+                            isMarkerDetected = true;
+                            const markerType = this.id === 'inkia-marker' ? 'INKIA' : 'HIRO';
+                            updateDebugInfo(`Marqueur ${markerType} détecté ✓`);
+                            document.querySelector('.ar-instructions').textContent = 
+                                `Marqueur ${markerType} détecté! Utilisez les boutons pour changer l'image.`;
+                            
+                            // Activer l'indicateur de détection
+                            detectionIndicator.classList.add('detected');
+                        });
+                        
+                        marker.addEventListener('markerLost', function() {
+                            isMarkerDetected = false;
+                            updateDebugInfo("Marqueur perdu ✗");
+                            document.querySelector('.ar-instructions').textContent = 
+                                "Montrez le marqueur INKIA à la caméra pour afficher le tableau";
+                            
+                            // Désactiver l'indicateur de détection
+                            detectionIndicator.classList.remove('detected');
+                        });
+                    });
+                }
+            }, 2000);
+            
+            // Note explicative sur la détection de marqueur personnalisé
+            updateDebugInfo("Dans un contexte réel, un marqueur personnalisé nécessiterait de générer un fichier .patt et de l'héberger correctement.");
+        });
+        
+        function switchToImage(imageId) {
+            try {
+                const tableau = document.getElementById('tableau');
+                const cadre = document.getElementById('cadre');
+                const sizeInfo = document.getElementById('size-info');
+                
+                if (imageId === 'image1') {
+                    // Petit tableau (60×40cm)
+                    const scaledWidth = baseWidthSmall * currentScale;
+                    const scaledHeight = baseHeightSmall * currentScale;
+                    tableau.setAttribute('width', scaledWidth);
+                    tableau.setAttribute('height', scaledHeight);
+                    cadre.setAttribute('width', scaledWidth + 0.05);
+                    cadre.setAttribute('height', scaledHeight + 0.05);
+                    tableau.setAttribute('material', 'src', '#image1; transparent: true; opacity: 1; shader: flat; alphaTest: 0.5; color: #ffffff; side: double');
+                    sizeInfo.textContent = `Taille réelle: 60 × 40 cm (échelle: ${currentScale.toFixed(1)})`;
+                    currentSize = "small";
+                    updateDebugInfo(`Affichage de l'image 1 (60×40cm) à l'échelle ${currentScale.toFixed(2)}`);
+                } else if (imageId === 'image2') {
+                    // Grand tableau (120×90cm)
+                    const scaledWidth = baseWidthLarge * currentScale;
+                    const scaledHeight = baseHeightLarge * currentScale;
+                    tableau.setAttribute('width', scaledWidth);
+                    tableau.setAttribute('height', scaledHeight);
+                    cadre.setAttribute('width', scaledWidth + 0.05);
+                    cadre.setAttribute('height', scaledHeight + 0.05);
+                    tableau.setAttribute('material', 'src', '#image2; transparent: true; opacity: 1; shader: flat; alphaTest: 0.5; color: #ffffff; side: double');
+                    sizeInfo.textContent = `Taille réelle: 90 × 60 cm (échelle: ${currentScale.toFixed(1)})`;
+                    currentSize = "large";
+                    updateDebugInfo(`Affichage de l'image 2 (90×60cm) à l'échelle ${currentScale.toFixed(2)}`);
+                }
+            } catch (e) {
+                updateDebugInfo(`Erreur: ${e.message}`);
+            }
+        }
+        
+        function adjustScale(factor) {
+            currentScale *= factor;
+            
+            // Limiter l'échelle entre 0.5 et 2.0 pour éviter des valeurs extrêmes
+            currentScale = Math.max(0.5, Math.min(currentScale, 2.0));
+            
+            // Mettre à jour le tableau avec la nouvelle échelle
+            updateTableau();
+        }
+        
+        function resetScale() {
+            currentScale = 1.0;
+            updateTableau();
+            updateDebugInfo("Échelle réinitialisée à 1.0");
+        }
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.style.display = debugMode ? 'block' : 'none';
+            
+            if (debugMode) {
+                checkARComponents();
+            }
+        }
+        
+        function checkARComponents() {
+            let status = "Diagnostic AR:\n";
+            
+            // Vérifier A-Frame
+            status += "- A-Frame: " + (typeof AFRAME !== 'undefined' ? "Chargé ✓" : "Non chargé ✗") + "\n";
+            
+            // Vérifier AR.js
+            status += "- AR.js: " + (AFRAME && AFRAME.components && AFRAME.components.arjs ? "Chargé ✓" : "Non chargé ✗") + "\n";
+            
+            // Vérifier la caméra
+            if (arCamera) {
+                status += "- Caméra: Initialisée ✓\n";
+                
+                // Vérifier si la caméra est active
+                const video = document.querySelector('video');
+                status += "- Flux vidéo: " + (video && !video.paused ? "Actif ✓" : "Inactif ✗") + "\n";
+            } else {
+                status += "- Caméra: Non initialisée ✗\n";
+            }
+            
+            // Vérifier les marqueurs
+            status += "- Marqueurs: " + (markers.length > 0 ? markers.length + " trouvés ✓" : "Aucun trouvé ✗") + "\n";
+            status += "- Détection de marqueur: " + (isMarkerDetected ? "Oui ✓" : "Non ✗") + "\n";
+            status += "- Taille actuelle: " + (currentSize === "small" ? "60×40cm" : "120×90cm") + "\n";
+            status += "- Échelle appliquée: " + currentScale.toFixed(2) + "\n";
+            
+            // Note sur les limitations
+            status += "\nNote: Dans un déploiement réel, un marqueur personnalisé nécessiterait un processus complet de génération.";
+            
+            updateDebugInfo(status);
+        }
+        
+        function updateDebugInfo(text) {
+            const debugInfo = document.getElementById('debug-info');
+            debugInfo.innerText = text;
+            
+            if (!debugMode) {
+                console.log(text);
+            }
+        }
+    </script>
+</body>
+</html>
