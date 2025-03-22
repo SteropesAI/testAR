@@ -1,4 +1,11 @@
-<!DOCTYPE html>
+function setSizeFromSelect(value) {
+            const dimensions = value.split(',').map(Number);
+            if (dimensions.length === 2) {
+                setTableauSize(dimensions[0], dimensions[1]);
+                // Forcer la mise à jour complète
+                updateTableau();
+            }
+        }<!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
@@ -148,7 +155,7 @@
 </head>
 <body>
     <div class="ar-instructions">
-        Montrez le marqueur INKIA à la caméra pour afficher le tableau
+        Montrez le marqueur Hiro à la caméra pour afficher le tableau
     </div>
     
     <div id="detection-indicator" class="detection-indicator"></div>
@@ -157,8 +164,8 @@
         Taille actuelle: 60 × 40 cm
     </div>
     
-    <div id="marker-info" class="marker-info">
-        Marqueur personnalisé INKIA (fichier .patt)
+    <div id="marker-info" class="marker-info" style="position: fixed; top: 100px; left: 10px; right: 10px; background-color: rgba(50, 150, 50, 0.7); color: white; padding: 5px; border-radius: 5px; z-index: 997; text-align: center;">
+        Utilisez le marqueur standard Hiro (20×20 cm)
     </div>
     
     <div id="debug-info"></div>
@@ -266,14 +273,16 @@
         let currentImageId = 1; // Image 1 par défaut
         
         // Facteur de correction pour ajuster l'échelle des objets AR par rapport au marqueur
-        let sizeCorrection = 2.4; // Facteur correctif pour avoir une taille de 60 cm réels
+        // Calibrage pour un marqueur Hiro de 20×20 cm (au lieu de 16×16 cm standard)
+        let markerSizeRatio = 20/16; // Ratio entre votre taille de marqueur réelle et celle standard
+        let sizeCorrection = 2.4 * (16/20); // Ajustement du facteur correctif pour un marqueur de 20 cm
         
         // Attendre que tout soit chargé
         window.addEventListener('load', function() {
-            // Afficher des instructions pour le marqueur INKIA
+            // Afficher des instructions pour le marqueur Hiro
             document.getElementById('marker-info').innerHTML = 
-                `<p>Utilisez votre marqueur personnalisé INKIA.</p>
-                <p>Placez le fichier pattern-inkia.patt dans le même répertoire que cette application.</p>`;
+                `<p>Utilisez le marqueur Hiro standard imprimé à 20×20 cm.</p>
+                <p>Les dimensions affichées seront correctes avec cette taille de marqueur.</p>`;
             
             // Récupérer les éléments après leur création
             setTimeout(function() {
@@ -291,7 +300,7 @@
                             const markerType = this.id === 'inkia-marker' ? 'INKIA' : 'HIRO';
                             updateDebugInfo(`Marqueur ${markerType} détecté ✓`);
                             document.querySelector('.ar-instructions').textContent = 
-                                `Marqueur ${markerType} détecté! Utilisez les boutons pour changer l'image.`;
+                                `Marqueur ${markerType} détecté! Utilisez les menus pour changer l'image et la taille.`;
                             
                             // Activer l'indicateur de détection
                             detectionIndicator.classList.add('detected');
@@ -301,7 +310,7 @@
                             isMarkerDetected = false;
                             updateDebugInfo("Marqueur perdu ✗");
                             document.querySelector('.ar-instructions').textContent = 
-                                "Montrez le marqueur INKIA à la caméra pour afficher le tableau";
+                                "Montrez le marqueur Hiro à la caméra pour afficher le tableau";
                             
                             // Désactiver l'indicateur de détection
                             detectionIndicator.classList.remove('detected');
